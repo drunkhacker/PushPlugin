@@ -158,19 +158,16 @@
 
     if (notificationMessage && self.callback)
     {
-        NSMutableString *jsonStr = [NSMutableString stringWithString:@"{"];
-
-        [self parseDictionary:notificationMessage intoJSON:jsonStr];
-
-        if (isInline)
-        {
-            [jsonStr appendFormat:@"foreground:\"%d\"", 1];
-            isInline = NO;
-        }
-		else
-            [jsonStr appendFormat:@"foreground:\"%d\"", 0];
+        NSError *err;
+        NSMutableDictionary *md = [notificationMessage mutableCopy];
         
-        [jsonStr appendString:@"}"];
+        [md setObject:[NSNumber numberWithInt:isInline ? 1: 0] forKey:@"foreground"];
+        isInline = NO;
+        NSString *jsonStr = [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:md options:0 error:&err] encoding:NSUTF8StringEncoding];
+        if (err) {
+            NSLog(@"json generate error : %@", err);
+            jsonStr = @"{}";
+        }
 
         NSLog(@"Msg: %@", jsonStr);
 
@@ -178,28 +175,6 @@
         [self.webView stringByEvaluatingJavaScriptFromString:jsCallBack];
         
         self.notificationMessage = nil;
-    }
-}
-
-// reentrant method to drill down and surface all sub-dictionaries' key/value pairs into the top level json
--(void)parseDictionary:(NSDictionary *)inDictionary intoJSON:(NSMutableString *)jsonString
-{
-    NSArray         *keys = [inDictionary allKeys];
-    NSString        *key;
-    
-    for (key in keys)
-    {
-        id thisObject = [inDictionary objectForKey:key];
-    
-        if ([thisObject isKindOfClass:[NSDictionary class]])
-            [self parseDictionary:thisObject intoJSON:jsonString];
-        else
-            [jsonString appendFormat:@"\"%@\":\"%@\",",
-             key,
-             [[[[inDictionary objectForKey:key]
-               stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"]
-                stringByReplacingOccurrencesOfString:@"\"" withString:@"\\\""]
-                stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"]];
     }
 }
 
